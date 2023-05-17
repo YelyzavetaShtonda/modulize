@@ -4,7 +4,7 @@ import openpyxl
 import pymysql
 import sys
 sys.path.insert(0, 'D:\Робота\Python\Time_parsing')
-import time_and_date_recognition
+import Time_parsing.time_and_date_recognition as time_and_date_recognition
 
 pd.set_option("display.max_columns", None)
 pd.set_option("display.max_rows", None)
@@ -136,17 +136,22 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
 
     # dict with connection indexes from both tables
     connection_dict = find_connections(df1[column1], df2[column2], final_score)
+    print('date_con_dict ', connection_dict)
+
+    # connection dicts with total scores for both tables
+    total_connection_1 = {}
+    total_connection_2 = {}
 
     # open both table and create columns
     wb1 = openpyxl.load_workbook(filename=name_table_1, read_only=False)
     ws1 = wb1[sheet1]
-    ws1.cell(row=1, column=width1 + 1).value = 'connection'
-    ws1.cell(row=1, column=width1 + 2).value = 'score'
+    ws1.cell(row=1, column=width1 + 1).value = 'connection_d'
+    ws1.cell(row=1, column=width1 + 2).value = 'score_d'
 
     wb2 = openpyxl.load_workbook(filename=name_table_2, read_only=False)
     ws2 = wb2[sheet2]
-    ws2.cell(row=1, column=width2 + 1).value = 'connection'
-    ws2.cell(row=1, column=width2 + 2).value = 'score'
+    ws2.cell(row=1, column=width2 + 1).value = 'connection_d'
+    ws2.cell(row=1, column=width2 + 2).value = 'score_d'
 
 
     # calculate and write score and match
@@ -167,12 +172,19 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
                 # if one row has 2 mathces with another table rows, it writes as table_name_row1_row2
                 if ws1.cell(row=i + 2, column=width1 + 1).value is None:
                     ws1.cell(row=i + 2, column=width1 + 1).value = f'{name_table_2}_{str(j[0][0] + 2)}'
+                    total_connection_1[i] = [[j[0][0], j[0][1] * columntype_score_1 / 100]]
                 else:
                     ws1.cell(row=i + 2, column=width1 + 1).value = ws1.cell(row=i + 2, column=width1 + 1).value + '_' + str(j[0][0] + 2)
+                    total_connection_1[i].append([j[0][0], j[0][1] * columntype_score_1 / 100])
+
                 if ws2.cell(row=j[0][0] + 2, column=width2 + 1).value is None:
                     ws2.cell(row=j[0][0] + 2, column=width2 + 1).value = f'{name_table_1}_{str(i + 2)}'
+                    total_connection_2[j[0][0]] = [[i, j[0][1] * columntype_score_2 / 100]]
+
                 else:
                     ws2.cell(row=j[0][0] + 2, column=width2 + 1).value = ws2.cell(row=j[0][0] + 2, column=width2 + 1).value + '_' + str(i + 2)
+                    total_connection_2[j[0][0]].append([i, j[0][1] * columntype_score_2 / 100])
+
                 # write score
                 ws1.cell(row=i + 2, column=width1 + 2).value = str(j[0][1]*columntype_score_1/100) + ' %'    # score of date time function * a score 50% * score of column type
                 ws2.cell(row=j[0][0] + 2, column=width2 + 2).value = str(j[0][1]*columntype_score_2/100) + ' %'    # score of date time function * a score 50% * score of column type
@@ -182,13 +194,20 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
                 for pair in j:
                     if ws1.cell(row=i + 2, column=width1 + 1).value is None:
                         ws1.cell(row=i + 2, column=width1 + 1).value = f'{name_table_2}_{str(pair[0] + 2)}'
+                        total_connection_1[i] = [[pair[0], pair[1] * columntype_score_1 / 100]]
+
                     else:
                         ws1.cell(row=i + 2, column=width1 + 1).value = ws1.cell(row=i + 2, column=width1 + 1).value + '_' + str(pair[0] + 2)
+                        total_connection_1[i].append([pair[0], pair[1] * columntype_score_1 / 100])
+
 
                     if ws2.cell(row=pair[0] + 2, column=width2 + 1).value is None:
                         ws2.cell(row=pair[0] + 2, column=width2 + 1).value = f'{name_table_1}_{str(i + 2)}'
+                        total_connection_2[pair[0]] = [[i, pair[1] * columntype_score_2 / 100]]
+
                     else:
                         ws2.cell(row=pair[0] + 2, column=width2 + 1).value = ws2.cell(row=pair[0] + 2, column=width2 + 1).value + '_' + str(i + 2)
+                        total_connection_2[pair[0]].append([i, pair[1] * columntype_score_2 / 100])
 
                     # write score
                     ws1.cell(row=i + 2, column=width1 + 2).value = str(pair[1]*columntype_score_1/100) + ' %'   # score of date time function * a score 50% * score of column type
@@ -196,6 +215,7 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
 
     wb1.save(name_table_1)
     wb2.save(name_table_2)
+    return total_connection_1, total_connection_2
 
 
 # write score and record id to both tables

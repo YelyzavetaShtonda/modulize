@@ -37,6 +37,7 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
     # df1 and df2 - tables where search match
     # sheet1 and sheet2 - sheets of tables where search match
     # column1 and column2 - columns between which search match
+    # return dicts with match and total scores for every table
 
     # dict with connection indexes from both tables
     width1 = len(df1.columns)
@@ -44,16 +45,20 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
 
     connection_dict = find_connections(df1[column1], df2[column2], final_score)
 
-    # open both table and create columns
+    # connection dicts with total scores for both tables
+    total_connection_1 = {}
+    total_connection_2 = {}
+
+    # open both tables and create columns
     wb1 = openpyxl.load_workbook(filename=name_table_1, read_only=False)
     ws1 = wb1[sheet1]
-    ws1.cell(row=1, column=width1 + 1).value = 'connection'
-    ws1.cell(row=1, column=width1 + 2).value = 'score'
+    ws1.cell(row=1, column=width1 + 1).value = 'connection_id'
+    ws1.cell(row=1, column=width1 + 2).value = 'score_id'
 
     wb2 = openpyxl.load_workbook(filename=name_table_2, read_only=False)
     ws2 = wb2[sheet2]
-    ws2.cell(row=1, column=width2 + 1).value = 'connection'
-    ws2.cell(row=1, column=width2 + 2).value = 'score'
+    ws2.cell(row=1, column=width2 + 1).value = 'connection_id'
+    ws2.cell(row=1, column=width2 + 2).value = 'score_id'
 
     # calculate and write score and match
     for i, j in connection_dict.items():
@@ -64,12 +69,17 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
                 # if one row has 2 mathces with another table rows, it writes as table_name_row1_row2
                 if ws1.cell(row=i + 2, column=width1 + 1).value is None:
                     ws1.cell(row=i + 2, column=width1 + 1).value = f'{name_table_2}_{str(j[0][0] + 2)}'
+                    total_connection_1[i] = [[j[0][0], j[0][1]*columntype_score_1/100]]
                 else:
                     ws1.cell(row=i + 2, column=width1 + 1).value = ws1.cell(row=i + 2, column=width1 + 1).value + '_' + str(j[0][0] + 2)
+                    total_connection_1[i].append([j[0][0], j[0][1]*columntype_score_1/100])
+
                 if ws2.cell(row=j[0][0] + 2, column=width2 + 1).value is None:
                     ws2.cell(row=j[0][0] + 2, column=width2 + 1).value = f'{name_table_1}_{str(i + 2)}'
+                    total_connection_2[j[0][0]] = [[i, j[0][1] * columntype_score_2 / 100]]
                 else:
                     ws2.cell(row=j[0][0] + 2, column=width2 + 1).value = ws2.cell(row=j[0][0] + 2, column=width2 + 1).value + '_' + str(i + 2)
+                    total_connection_2[j[0][0]].append([i, j[0][1]*columntype_score_2/100])
                 # write score
                 ws1.cell(row=i + 2, column=width1 + 2).value = str(j[0][1]*columntype_score_1/100) + ' %'           # TRX ID temporary connection*score of column type
                 ws2.cell(row=j[0][0] + 2, column=width2 + 2).value = str(j[0][1]*columntype_score_2/100) + ' %'    # TRX ID temporary connection*score of column type
@@ -79,13 +89,17 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
                 for pair in j:
                     if ws1.cell(row=i + 2, column=width1 + 1).value is None:
                         ws1.cell(row=i + 2, column=width1 + 1).value = f'{name_table_2}_{str(pair[0] + 2)}'
+                        total_connection_1[i] = [[pair[0], pair[1]*columntype_score_1/100]]
                     else:
                         ws1.cell(row=i + 2, column=width1 + 1).value = ws1.cell(row=i + 2, column=width1 + 1).value + '_' + str(pair[0] + 2)
+                        total_connection_1[i].append([pair[0], pair[1]*columntype_score_1/100])
 
                     if ws2.cell(row=pair[0] + 2, column=width2 + 1).value is None:
                         ws2.cell(row=pair[0] + 2, column=width2 + 1).value = f'{name_table_1}_{str(i + 2)}'
+                        total_connection_2[pair[0]] = [[i, pair[1]*columntype_score_2/100]]
                     else:
                         ws2.cell(row=pair[0] + 2, column=width2 + 1).value = ws2.cell(row=pair[0] + 2, column=width2 + 1).value + '_' + str(i + 2)
+                        total_connection_2[pair[0]].append([i, pair[1]*columntype_score_2/100])
 
                     # write score
                     ws1.cell(row=i + 2, column=width1 + 2).value = str(pair[1]*columntype_score_1/100) + ' %'       # TRX ID temporary connection*score of column type
@@ -93,5 +107,6 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
 
     wb1.save(name_table_1)
     wb2.save(name_table_2)
+    return total_connection_1, total_connection_2
 
 # write_connections(df1, sheet_name_1, df1_column, df2, sheet_name_2, df2_column)
