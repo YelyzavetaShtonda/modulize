@@ -4,7 +4,7 @@ import openpyxl
 import pymysql
 import sys
 sys.path.insert(0, 'D:\Робота\Python\data_recognition')
-import data_recognition.func_to_identify_column_titles_new as func_to_identify_column_titles_new
+import data_recognition.func_to_identify_column_titles as func_to_identify_column_titles
 import datetime_match
 import transaction_id_match
 import email_match
@@ -49,8 +49,8 @@ width2 = len(df2.columns)
 length1 = len(df1.index)
 length2 = len(df2.index)
 
-column1_type = pd.DataFrame(func_to_identify_column_titles_new.main(name_table_1, sheet_name_1)[['Column Name', 'Final output', 'Score']])  #таблиця з назвами колонок і final категоризацією
-column2_type = pd.DataFrame(func_to_identify_column_titles_new.main(name_table_2, sheet_name_2)[['Column Name', 'Final output', 'Score']])  #таблиця з назвами колонок і final категоризацією
+column1_type = pd.DataFrame(func_to_identify_column_titles.categorize_columns(name_table_1, sheet_name_1)[['Column Name', 'Final output', 'Score']])  #таблиця з назвами колонок і final категоризацією
+column2_type = pd.DataFrame(func_to_identify_column_titles.categorize_columns(name_table_2, sheet_name_2)[['Column Name', 'Final output', 'Score']])  #таблиця з назвами колонок і final категоризацією
 
 
 def find_trx_id():
@@ -404,6 +404,7 @@ def final_scores_2(list_of_dicts):
             write_final_score(trx_id_dict, 100)
         else:
             write_final_score(trx_id_dict, 75)
+
 
 def main():
     list_of_dicts = final_scores()

@@ -294,4 +294,4 @@ def main(filename, sheetname):
 
     return res
 
-# main('PSP_to_Airtable_1_copy.xlsx', 'Fibonatix')
+print(main('PSP_to_Airtable_1_copy.xlsx', 'Fibonatix'))
