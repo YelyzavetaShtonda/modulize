@@ -405,7 +405,6 @@ def final_scores_2(list_of_dicts):
         else:
             write_final_score(trx_id_dict, 75)
 
-
 def main():
     list_of_dicts = final_scores()
     final_scores_2(list_of_dicts)
