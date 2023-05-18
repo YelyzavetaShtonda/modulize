@@ -1,3 +1,7 @@
+from datetime import datetime
+
+start=datetime.now()
+
 import pandas as pd
 import re
 import openpyxl
@@ -9,6 +13,9 @@ import datetime_match
 import transaction_id_match
 import email_match
 import name_match
+
+import_ = datetime.now()
+print('import_', import_-start)
 
 pd.set_option("display.max_columns", None)
 pd.set_option("display.max_rows", None)
@@ -30,12 +37,15 @@ with conn.cursor() as cursor:
     result = cursor.fetchone()
     scoring_df = pd.read_sql_query(sql, conn)
 
+connect_to_sql = datetime.now()
+print('connect_to_sql', connect_to_sql-import_)
 
 final_connection = scoring_df.query('`Function name` == "Connection"').reset_index(drop=True)
 final_connection_temp = final_connection.query('`scoring type` == "temporary score"').reset_index(drop=True)
 final_connection_final = final_connection.query('`scoring type` == "final score"').reset_index(drop=True)
 
-
+take_data_from_sql = datetime.now()
+print('take_data_from_sql',take_data_from_sql-connect_to_sql)
 
 #read excel file
 name_table_1 = 'PSP_to_Airtable_1.xlsx'
@@ -49,11 +59,20 @@ width2 = len(df2.columns)
 length1 = len(df1.index)
 length2 = len(df2.index)
 
-column1_type = pd.DataFrame(func_to_identify_column_titles.categorize_columns(name_table_1, sheet_name_1)[['Column Name', 'Final output', 'Score']])  #таблиця з назвами колонок і final категоризацією
-column2_type = pd.DataFrame(func_to_identify_column_titles.categorize_columns(name_table_2, sheet_name_2)[['Column Name', 'Final output', 'Score']])  #таблиця з назвами колонок і final категоризацією
+read_excel = datetime.now()
+print('read_excel', read_excel-take_data_from_sql)
 
+column1_type = pd.DataFrame(func_to_identify_column_titles.categorize_columns(name_table_1, sheet_name_1)[0][['Column Name', 'Final output', 'Score']])  #таблиця з назвами колонок і final категоризацією
+column2_type = pd.DataFrame(func_to_identify_column_titles.categorize_columns(name_table_2, sheet_name_2)[0][['Column Name', 'Final output', 'Score']])  #таблиця з назвами колонок і final категоризацією
+
+Olyas_func_for_both_tables = datetime.now()
+print('Olyas_func_for_both_tables', Olyas_func_for_both_tables-read_excel)
 
 def find_trx_id():
+    """
+    choose what columns are trx_id based on categorize_columns() final_output func for each table
+    :return:
+    """
     # find trx ids in first table
     list_with_ids_1 = []
     for i in range(len(column1_type.index)):
@@ -150,7 +169,7 @@ def find_datetime():
 
 def write_add_trx_id_scores(i, matches_number_i, j, matches_number_j):
     # receives index of row and number of matches with this row from 1st table. receives the same from another table
-    print(f'INCREASE SCORE BY {5*(matches_number_i-1)} and {5*(matches_number_j-1)} IN {i+2} ~ {j+2} rows')
+    # print(f'INCREASE SCORE BY {5*(matches_number_i-1)} and {5*(matches_number_j-1)} IN {i+2} ~ {j+2} rows')
     wb1 = openpyxl.load_workbook(filename=name_table_1, read_only=False)
     ws1 = wb1[sheet_name_1]
     ws1.cell(row=i + 2, column=width1 + 2).value = str(float(ws1.cell(row=i+2, column=width1 + 2).value[:-2]) + 5*(matches_number_i-1)) + ' %'
@@ -167,6 +186,8 @@ def additional_trx_id_scores(lists):
     # receives lists of columns and scores, which needed to be searched for additional scores
     print('i`m here')
     list_1, list_2 = lists
+    # print(list_1)
+    # print(list_2)
     # number of matches in every i row form 1 table
     matches_in_every_row = {}
     # по кожній колонці 1 таблиці
@@ -182,99 +203,137 @@ def additional_trx_id_scores(lists):
                     # print(col1, '***', col2)
                     if df1[col1][i] == df2[col2][j]:
                         matches_number += 1
-                print(f'change_scores (found {matches_number} matches per {j+2} row)')
+                # print(f'change_scores (found {matches_number} matches {i+2} row with {j+2} row)')
                 # add match number per row in dict
                 if i in matches_in_every_row:
                     matches_in_every_row[i] += matches_number
                 else:
                     matches_in_every_row[i] = matches_number
                 if matches_number > 1:
-                    write_add_trx_id_scores(i, matches_in_every_row[i], j, matches_number)
-
-
-
+                    continue
+                    # write_add_trx_id_scores(i, matches_in_every_row[i], j, matches_number)
 
 
 # function tries match by trx id, if no then by email, if no then by names, if no then by datetime
-def final_scores():
+def final_scores(priority):
+
+    return_list = []
 
     global df1, df2
 
-    # list of dicts with matches and final scores per every match type (by trx_id, email, name, and datetime)
-    return_list = []
+    find_id_in_dfs = datetime.now()
+    def trx_match_func():
+        # lists with column names which are recognized as trx_id type
+        trx_id_lists = find_trx_id()
+        if len(trx_id_lists[0]) and len(trx_id_lists[1]):
+            df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
+            df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
+            column_name_1 = trx_id_lists[0][0][0]
+            column_name_2 = trx_id_lists[1][0][0]
+            columntype_score_1 = trx_id_lists[0][0][1]
+            columntype_score_2 = trx_id_lists[1][0][1]
+            # print('by trx')
+            # print(trx_id_lists)
+            final_trx_score = final_connection_temp.query('`scoring API name` == "TRX ID temporary connection"')['score'][0]
+            # list of dicts with matches and final scores per every match type (by trx_id, email, name, and datetime)
+            final_trx_id_matches = transaction_id_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_trx_score, columntype_score_1, columntype_score_2)
+            # find_and_write_match_id = datetime.now()
+            # print('find_and_write_match_id', find_and_write_match_id-find_datetime_in_dfs)
+            # additional_trx_id_scores(trx_id_lists)
+            # count_add_temp_score_id = datetime.now()
+            # print('count_add_temp_score_id', count_add_temp_score_id-find_and_write_match_id)
+            return_list.append(['TRX_ID', final_trx_id_matches])
+    print('find_id_in_dfs', find_id_in_dfs-Olyas_func_for_both_tables)
 
-    # lists with column names which are recognized as specific type (trx_id, email, name or datetime)
-    trx_id_lists = find_trx_id()
-    email_lists = find_email()
-    name_lists = find_names()
-    datetime_lists = find_datetime()
+    find_email_in_dfs = datetime.now()
+    def email_match_func():
+        # lists with column names which are recognized as email type
+        email_lists = find_email()
+        if len(email_lists[0]) > 0 and len(email_lists[1]) > 0:
+            df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
+            df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
+            column_name_1 = email_lists[0][0][0]
+            column_name_2 = email_lists[1][0][0]
+            columntype_score_1 = email_lists[0][0][1]
+            columntype_score_2 = email_lists[1][0][1]
+            # print('by email')
+            # print(email_lists)
+            final_email_score = final_connection_temp.query('`scoring API name` == "email temporary connection"')['score'][1]
+            # list of dicts with matches and final scores per every match type (by trx_id, email, name, and datetime)
+            final_email_matches = email_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_email_score, columntype_score_1, columntype_score_2)
+            # find_and_write_match_email = datetime.now()
+            # print('find_and_write_match_email',find_and_write_match_email-count_add_temp_score_id)
+            # additional_trx_id_scores(email_lists)
+            # count_add_temp_score_email = datetime.now()
+            # print('count_add_temp_score_email', count_add_temp_score_email-find_and_write_match_email)
+            # print(final_email_matches[0])
+            # print(final_email_matches[1])
+            return_list.append(['email', final_email_matches])
+    print('find_email_in_dfs', find_email_in_dfs-find_id_in_dfs)
 
+    find_names_in_dfs = datetime.now()
+    def name_match_func():
+        # lists with column names which are recognized as name type
+        name_lists = find_names()
+        if len(name_lists[0]) > 0 and len(name_lists[1]) > 0:
+            df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
+            df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
+            column_name_1 = name_lists[0][0][0]
+            column_name_2 = name_lists[1][0][0]
+            columntype_score_1 = name_lists[0][0][1]
+            columntype_score_2 = name_lists[1][0][1]
+            # print('by name')
+            # print(name_lists)
+            final_name_score = final_connection_temp.query('`scoring API name` == "name temporary connection"')['score'][2]
+            # list of dicts with matches and final scores per every match type (by trx_id, email, name, and datetime)
+            final_name_matches = name_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_name_score, columntype_score_1, columntype_score_2)
+            # print(final_name_matches[0])
+            # print(final_name_matches[1])
+            return_list.append(['name', final_name_matches])
+    print('find_names_in_dfs', find_names_in_dfs-find_email_in_dfs)
 
-    if len(trx_id_lists[0]) and len(trx_id_lists[1]):
-        column_name_1 = trx_id_lists[0][0][0]
-        column_name_2 = trx_id_lists[1][0][0]
-        columntype_score_1 = trx_id_lists[0][0][1]
-        columntype_score_2 = trx_id_lists[1][0][1]
-        print('by trx')
-        print(trx_id_lists)
-        final_trx_score = final_connection_temp.query('`scoring API name` == "TRX ID temporary connection"')['score'][0]
-        final_trx_id_matches = transaction_id_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_trx_score, columntype_score_1, columntype_score_2)
-        # additional_trx_id_scores(trx_id_lists)
-        print(final_trx_id_matches[0])
-        print(final_trx_id_matches[1])
-        return_list.append(['trx_id', final_trx_id_matches])
+    find_datetime_in_dfs = datetime.now()
+    def datetime_match_func():
+        # lists with column names which are recognized as match type
+        datetime_lists = find_datetime()
+        if len(datetime_lists[0]) > 0 and len(datetime_lists[1]) > 0:
+            df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
+            df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
+            column_name_1 = datetime_lists[0][0][0]
+            column_name_2 = datetime_lists[1][0][0]
+            columntype_score_1 = datetime_lists[0][0][1]
+            columntype_score_2 = datetime_lists[1][0][1]
+            # print('by datetime')
+            # print(datetime_lists)
+            final_datetime_score = final_connection_temp.query('`scoring API name` == "date temporary connection"')['score'][3]
+            # list of dicts with matches and final scores per every match type (by trx_id, email, name, and datetime)
+            final_datetime_matches = datetime_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_datetime_score, columntype_score_1, columntype_score_2)
+            # print(final_datetime_matches[0])
+            # print(final_datetime_matches[1])
+            return_list.append(['datetime', final_datetime_matches])
+    print('find_datetime_in_dfs', find_datetime_in_dfs-find_names_in_dfs)
 
-    if len(email_lists[0]) > 0 and len(email_lists[1]) > 0:
-        df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
-        df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
-        column_name_1 = email_lists[0][0][0]
-        column_name_2 = email_lists[1][0][0]
-        columntype_score_1 = email_lists[0][0][1]
-        columntype_score_2 = email_lists[1][0][1]
-        print('by email')
-        print(email_lists)
-        final_email_score = final_connection_temp.query('`scoring API name` == "email temporary connection"')['score'][1]
-        final_email_matches = email_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_email_score, columntype_score_1, columntype_score_2)
-        # additional_trx_id_scores(email_lists)
-        print(final_email_matches[0])
-        print(final_email_matches[1])
-        return_list.append(['email', final_email_matches])
+    def other_match_func():
 
-    if len(name_lists[0]) > 0 and len(name_lists[1]) > 0:
-        df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
-        df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
-        column_name_1 = name_lists[0][0][0]
-        column_name_2 = name_lists[1][0][0]
-        columntype_score_1 = name_lists[0][0][1]
-        columntype_score_2 = name_lists[1][0][1]
-        print('by name')
-        print(name_lists)
-        final_name_score = final_connection_temp.query('`scoring API name` == "name temporary connection"')['score'][2]
-        final_name_matches = name_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_name_score, columntype_score_1, columntype_score_2)
-        print(final_name_matches[0])
-        print(final_name_matches[1])
-        return_list.append(['name', final_name_matches])
+        final_score = final_connection_temp.query('`scoring API name` == "noname temporary connection"')['score'][4]
+        return []
 
-    if len(datetime_lists[0]) > 0 and len(datetime_lists[1]) > 0:
-        df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
-        df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
-        column_name_1 = datetime_lists[0][0][0]
-        column_name_2 = datetime_lists[1][0][0]
-        columntype_score_1 = datetime_lists[0][0][1]
-        columntype_score_2 = datetime_lists[1][0][1]
-        print('by datetime')
-        print(datetime_lists)
-        final_datetime_score = final_connection_temp.query('`scoring API name` == "date temporary connection"')['score'][3]
-        final_datetime_matches = datetime_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_datetime_score, columntype_score_1, columntype_score_2)
-        print(final_datetime_matches[0])
-        print(final_datetime_matches[1])
-        return_list.append(['datetime', final_datetime_matches])
+    # call functions to search for matches by priority
+    for i in range(len(priority)):
 
-    # else:
-    #     print('no match')
-    #     final_datetime_score = final_connection_temp.query('`scoring API name` == "noname temporary connection"')['score'][4]
+        if priority[i] == 'TRX_ID':
+            trx_match_func()
+        elif priority[i] == 'email':
+            email_match_func()
+        elif priority[i] == 'name':
+            name_match_func()
+        elif priority[i] == 'datetime':
+            datetime_match_func()
+        else:
+            other_match_func()
 
     return return_list
+
 
 def write_final_score(dicts, final_coeff):
     """
@@ -302,8 +361,8 @@ def write_final_score(dicts, final_coeff):
     ws2.cell(row=1, column=width2 + 2).value = 'final_score'
 
 
-    print('dict1', dict_1)
-    print('dict2', dict_2)
+    # print('dict1', dict_1)
+    # print('dict2', dict_2)
 
     #write matches ans final scores to 1st table
     for row, score in dict_1.items():
@@ -349,36 +408,16 @@ def write_final_score(dicts, final_coeff):
                     # write score
                     ws2.cell(row=row + 2, column=width2 + 2).value = str(pair[1] * final_coeff / 100) + ' %'
 
-    # for row, score in dict_2.items():
-    #     if len(score) > 0:
-    #         if len(score) == 1:
-    #             if ws2.cell(row=score[0][0] + 2, column=width2 + 1).value is None:
-    #                 ws2.cell(row=score[0][0] + 2, column=width2 + 1).value = f'{name_table_1}_{str(row + 2)}'
-    #             else:
-    #                 ws2.cell(row=score[0][0] + 2, column=width2 + 1).value = ws2.cell(row=score[0][0] + 2, column=width2 + 1).value + '_' + str(row + 2)
-    #             # write score
-    #             ws1.cell(row=row + 2, column=width1 + 2).value = str(score[0][1]*final_coeff/100) + ' %'
-    #
-    #         # if for j row there are multiple matches with rows from 1 table
-    #         else:
-    #             for pair in score:
-    #                 if ws2.cell(row=pair[0] + 2, column=width2 + 1).value is None:
-    #                     ws2.cell(row=pair[0] + 2, column=width2 + 1).value = f'{name_table_1}_{str(row + 2)}'
-    #                 else:
-    #                     ws2.cell(row=pair[0] + 2, column=width2 + 1).value = ws2.cell(row=pair[0] + 2, column=width2 + 1).value + '_' + str(row + 2)
-    #
-    #                 # write score
-    #                 ws2.cell(row=pair[0] + 2, column=width2 + 2).value = str(pair[1] * final_coeff / 100) + ' %'
+
 
     wb1.save(name_table_1)
     wb2.save(name_table_2)
 
 
-def final_scores_2(list_of_dicts):
+def final_scores_2(list_of_dicts, priority):
     """
     takes list of dicts with scores for each type and calculate final scores to pass it to write_final_score() func
     """
-
 
     # list of dicts with matches and scores for each type
     trx_id_dict = {}
@@ -386,28 +425,62 @@ def final_scores_2(list_of_dicts):
     name_dict = {}
     datetime_dict = {}
 
+    # list of 4 dicts above in prioritized order
+    list_of_prioritized_dicts = []
+
+    # for i in range(len(priority)):
+    #
+    #     if priority[i] == 'TRX_ID':
+    #         trx_match_func()
+    #     elif priority[i] == 'email':
+    #         email_match_func()
+    #     elif priority[i] == 'name':
+    #         name_match_func()
+    #     elif priority[i] == 'datetime':
+    #         datetime_match_func()
+    #     else:
+    #         other_match_func()
+
     # parse list with matches&scores of each type
-    for type, dict in list_of_dicts:
-        if type == 'trx_id':
-            trx_id_dict = dict
-        elif type == 'email':
-            email_dict = dict
-        elif type == 'name':
-            name_dict = dict
-        elif type == 'datetime':
-            datetime_dict = dict
+    if len(list_of_dicts) > 0:
 
-    if trx_id_dict:
+        for type, dict in list_of_dicts:
+            if type == 'TRX_ID':
+                trx_id_dict = dict
+                list_of_prioritized_dicts.append([type, dict])
+            elif type == 'email':
+                email_dict = dict
+                list_of_prioritized_dicts.append([type, dict])
+            elif type == 'name':
+                name_dict = dict
+                list_of_prioritized_dicts.append([type, dict])
+            elif type == 'datetime':
+                datetime_dict = dict
+                list_of_prioritized_dicts.append([type, dict])
 
-        # if other dicts don`t exist
-        if not (email_dict or name_dict or datetime_dict):
-            write_final_score(trx_id_dict, 100)
-        else:
-            write_final_score(trx_id_dict, 75)
+        print('1 list_of_prioritezed dicts', list_of_prioritized_dicts[0])
+        print('2 list_of_prioritezed dicts', list_of_prioritized_dicts[1])
+
+        if priority[0] == list_of_prioritized_dicts[0][0]:
+        # if trx_id_dict:
+            time1=datetime.now()
+            # if other dicts don`t exist
+            if len(list_of_prioritized_dicts) == 1:
+            # if not (email_dict or name_dict or datetime_dict):
+                write_final_score(list_of_prioritized_dicts[0][1], 100)
+                # write_final_score(trx_id_dict, 100)
+            else:
+                write_final_score(list_of_prioritized_dicts[0][1], 75)
+                # write_final_score(trx_id_dict, 75)
+            write_final_score_ = datetime.now()
+            print('write_final_score_', write_final_score_-time1)
 
 
 def main():
-    list_of_dicts = final_scores()
-    final_scores_2(list_of_dicts)
+    priority = ['email','name','TRX_ID','datetime']
+    list_of_dicts = final_scores(priority)
+    final_scores_2(list_of_dicts, priority)
 
 main()
+finish = datetime.now()
+print('all time', finish-start)
