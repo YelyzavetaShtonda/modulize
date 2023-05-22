@@ -310,5 +310,6 @@ def categorize_columns(filename, sheetname):
 
     res = calculate_final_output(result3, column_type_score)
     final_data = add_data_to_main_df(df, res)
-    return res
+    return res, final_data
 
+# print(categorize_columns('PSP_to_Airtable_1_copy.xlsx', 'Fibonatix'))

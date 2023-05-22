@@ -62,7 +62,8 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
 
     # calculate and write score and match
     for i, j in connection_dict.items():
-
+        # total_connection_1[i]  = []
+        # total_connection_2[i] = []
         # if row i from 1 table has match with row j form 2 table:
         if len(j) > 0:
             if len(j) == 1:

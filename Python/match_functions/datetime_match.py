@@ -136,7 +136,6 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
 
     # dict with connection indexes from both tables
     connection_dict = find_connections(df1[column1], df2[column2], final_score)
-    print('date_con_dict ', connection_dict)
 
     # connection dicts with total scores for both tables
     total_connection_1 = {}
@@ -165,7 +164,8 @@ def write_connections(name_table_1, df1, sheet1, column1, name_table_2, df2, she
     #         ws2.cell(row=j[0][0] + 2, column=width2 + 2).value = str(j[0][1]) + ' %'
 
     for i, j in connection_dict.items():
-
+        # total_connection_1[i] = []
+        # total_connection_2[i] = []
         # if row i from 1 table has match with row j form 2 table:
         if len(j) > 0:
             if len(j) == 1:
