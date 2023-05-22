@@ -229,8 +229,6 @@ def additional_trx_id_scores(lists, name_table_1, name_table_2, sheet_name_1, sh
 # function tries match by trx id, if no then by email, if no then by names, if no then by datetime
 def final_scores(priority, final_connection_temp, column1_type, column2_type, name_table_1, name_table_2, sheet_name_1, sheet_name_2, width1, width2, length1, length2):
 
-    # global df1, df2
-
     return_list = []
 
     other_column_types_list_1 = []   # list with names of columns that are not ids, emails, names or datetime in 1 table
@@ -280,20 +278,20 @@ def final_scores(priority, final_connection_temp, column1_type, column2_type, na
             columntype_score_1 = email_lists[0][0][1]
             columntype_score_2 = email_lists[1][0][1]
             # print('by email')
-            # print(email_lists)
             final_email_score = final_connection_temp.query('`scoring API name` == "email temporary connection"')['score'][1]
+
             # list of dicts with matches and final scores per every match type (by trx_id, email, name, and datetime)
             final_email_matches = email_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_email_score, columntype_score_1, columntype_score_2)
-            # find_and_write_match_email = datetime.now()
-            # print('find_and_write_match_email',find_and_write_match_email-count_add_temp_score_id)
-            # additional_trx_id_scores(email_lists)
-            # count_add_temp_score_email = datetime.now()
-            # print('count_add_temp_score_email', count_add_temp_score_email-find_and_write_match_email)
-            # print(final_email_matches[0])
-            # print(final_email_matches[1])
-            return_list.append(['email', final_email_matches])
+
             find_email_in_dfs = datetime.now()
-            print('find_email_in_dfs', find_email_in_dfs-emails)
+            find_email__ = find_email_in_dfs - emails
+            print('find_email_in_dfs', find_email__)
+
+            df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
+            df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
+            additional_trx_id_scores(email_lists, name_table_1, name_table_2, sheet_name_1, sheet_name_2, width1, width2, length1, length2, df1, df2)
+            return_list.append(['email', final_email_matches])
+            print('additional score for email ', datetime.now()-find_email__)
 
     def name_match_func():
         # lists with column names which are recognized as name type
@@ -312,11 +310,18 @@ def final_scores(priority, final_connection_temp, column1_type, column2_type, na
             final_name_score = final_connection_temp.query('`scoring API name` == "name temporary connection"')['score'][2]
             # list of dicts with matches and final scores per every match type (by trx_id, email, name, and datetime)
             final_name_matches = name_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_name_score, columntype_score_1, columntype_score_2)
-            # print(final_name_matches[0])
-            # print(final_name_matches[1])
-            return_list.append(['name', final_name_matches])
             find_names_in_dfs = datetime.now()
-            print('find_names_in_dfs', find_names_in_dfs-names)
+            print('find_names_in_dfs', find_names_in_dfs - names)
+
+            find_name_in_dfs = datetime.now()
+            find_email__ = find_name_in_dfs - names
+            print('find_name_in_dfs', find_email__)
+            df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
+            df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
+            additional_trx_id_scores(name_lists, name_table_1, name_table_2, sheet_name_1, sheet_name_2, width1, width2, length1, length2, df1, df2)
+            return_list.append(['name', final_name_matches])
+            name_in_dfs = datetime.now()
+            print('additional score for name ', name_in_dfs-find_name_in_dfs)
 
     def datetime_match_func():
         # lists with column names which are recognized as datetime type
@@ -335,11 +340,16 @@ def final_scores(priority, final_connection_temp, column1_type, column2_type, na
             final_datetime_score = final_connection_temp.query('`scoring API name` == "date temporary connection"')['score'][3]
             # list of dicts with matches and final scores per every match type (by trx_id, email, name, and datetime)
             final_datetime_matches = datetime_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_datetime_score, columntype_score_1, columntype_score_2)
-            # print(final_datetime_matches[0])
-            # print(final_datetime_matches[1])
-            return_list.append(['datetime', final_datetime_matches])
+
             find_datetime_in_dfs = datetime.now()
-            print('find_datetime_in_dfs', find_datetime_in_dfs-datetimes)
+            datetime__ = find_datetime_in_dfs - datetimes
+            print('find_datetime_in_dfs', datetime__)
+
+            df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
+            df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
+            additional_trx_id_scores(datetime_lists, name_table_1, name_table_2, sheet_name_1, sheet_name_2, width1, width2, length1, length2, df1, df2)
+            print('additional scores for datetime ', datetime.now()-datetime__)
+            return_list.append(['datetime', final_datetime_matches])
 
     def other_match_func():
         # defines column that are id, emails, names or datetimes
@@ -368,7 +378,12 @@ def final_scores(priority, final_connection_temp, column1_type, column2_type, na
             final_other_matches = other_type_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_other_score, columntype_score_1, columntype_score_2)
             return_list.append(['other', final_other_matches])
             find_other_in_dfs = datetime.now()
-            print('find_other_matches_in_dfs', find_other_in_dfs - others)
+            other__ = find_other_in_dfs - others
+            print('find_other_matches_in_dfs', other__)
+            df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
+            df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
+            additional_trx_id_scores(datetime_lists, name_table_1, name_table_2, sheet_name_1, sheet_name_2, width1, width2, length1, length2, df1, df2)
+            print('additional scores for "is" ', datetime.now()-other__)
 
     def other_contain_match_func():
         # # defines column that are id, emails, names or datetimes
@@ -397,7 +412,12 @@ def final_scores(priority, final_connection_temp, column1_type, column2_type, na
             final_other_matches = other_type_contain_match.write_connections(name_table_1, df1, sheet_name_1, column_name_1, name_table_2, df2, sheet_name_2, column_name_2, final_other_score, columntype_score_1, columntype_score_2)
             return_list.append(['other_contain', final_other_matches])
             find_other_in_dfs = datetime.now()
-            print('find_other_contain_matches_in_dfs', find_other_in_dfs - others)
+            other__ = find_other_in_dfs - others
+            print('find_other_contain_matches_in_dfs', other__)
+            df1 = pd.read_excel(name_table_1, sheet_name=sheet_name_1)
+            df2 = pd.read_excel(name_table_2, sheet_name=sheet_name_2)
+            additional_trx_id_scores(other_type_lists, name_table_1, name_table_2, sheet_name_1, sheet_name_2, width1, width2, length1, length2, df1, df2)
+            print('additional scores for "contains" ', datetime.now() - other__)
 
     # call functions to search for matches by priority
     for i in range(len(priority)):
